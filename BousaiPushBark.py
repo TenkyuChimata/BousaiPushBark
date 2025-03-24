@@ -2,8 +2,8 @@
 
 #
 #  Bousai Push Bark
-#  Current version 1.0.1
-#  Code Python version 3.11.9
+#  Current version 1.0.2
+#  Code Python version 3.12
 #
 #  API Source: https://api.wolfx.jp
 #  Bark: https://github.com/finb/bark
@@ -20,23 +20,28 @@ import websockets
 
 first = True
 
-keys = [ # Bark Keys
+keys = [  # Bark Keys
     "XXXXXXX",
     "AAAAAAA",
     "bbbbbbb",
 ]
 
+
 def getTime():
     return datetime.datetime.now().strftime("%H:%M:%S")
+
 
 async def fetch(session, key, content):
     url = f"https://api.day.app/{key}/{content}"
     async with session.get(url) as response:
         return await response.text()
 
+
 async def push(content):
     async with aiohttp.ClientSession() as session:
-        tasks = [await fetch(session, key, content) for key in keys]
+        tasks = [asyncio.create_task(fetch(session, key, content)) for key in keys]
+        await asyncio.gather(*tasks)
+
 
 async def websocket_client():
     global first
@@ -49,7 +54,11 @@ async def websocket_client():
                     if data["type"] != "heartbeat":
                         if data["type"] == "jma_eew":
                             title = f"{data['Title']}"
-                            serial = f"第{data['Serial']}報" if not data["isFinal"] else "最終報"
+                            serial = (
+                                f"第{data['Serial']}報"
+                                if not data["isFinal"]
+                                else "最終報"
+                            )
                             text = f"{serial} {data['OriginTime'].replace('/', '-')} {data['Hypocenter']} M{data['Magunitude']} 深さ{data['Depth']}km 最大震度{data['MaxIntensity']}"
                             print(f"[{getTime()}] [{title}] {text}")
                             await push(f"{title}/{text}")
@@ -75,7 +84,9 @@ async def websocket_client():
                             await push(f"{title}/{text}")
                     else:
                         if not first:
-                            print(f"[{getTime()}] Received WebSocket API heartbeat, acknowledged.")
+                            print(
+                                f"[{getTime()}] Received WebSocket API heartbeat, acknowledged."
+                            )
                             await websocket.send("ping")
                         else:
                             first = False
@@ -83,6 +94,7 @@ async def websocket_client():
             print(e)
             time.sleep(1)
             continue
+
 
 if __name__ == "__main__":
     asyncio.run(websocket_client())
