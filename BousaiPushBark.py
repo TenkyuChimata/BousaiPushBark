@@ -12,7 +12,6 @@
 # ####
 
 import json
-import time
 import aiohttp
 import asyncio
 import datetime
@@ -92,7 +91,7 @@ async def websocket_client():
                             first = False
         except Exception as e:
             print(e)
-            time.sleep(1)
+            await asyncio.sleep(1)
             continue
 
 
